@@ -14,35 +14,44 @@ export function ChatKitPanel() {
 
   // --- UI language patch (Dutch) ---
   useEffect(() => {
-    const panel =
+    const root =
       document.getElementById("skillport-chatkit-root") ?? document.body;
 
     const applyDutchUI = () => {
-      // 1) Input placeholder
+      // 1) Replace the big welcome text anywhere (not only h1/h2/h3)
+      const all = Array.from(root.querySelectorAll("*"));
+      for (const el of all) {
+        const t = (el.textContent || "").trim();
+
+        if (t === "What can I help with today?") {
+          el.textContent = "Waarmee kan ik je vandaag helpen?";
+        }
+      }
+
+      // 2) Replace input placeholder text (ChatKit may use input/textarea OR aria-label)
       const input =
-        document.querySelector("textarea") ||
-        document.querySelector('input[type="text"]');
+        root.querySelector("textarea[placeholder]") ||
+        root.querySelector("input[placeholder]") ||
+        root.querySelector("textarea") ||
+        root.querySelector('input[type="text"]');
 
       if (input) {
         input.setAttribute("placeholder", "Stel je vraag aan Skillport…");
       }
 
-      // 2) Big welcome headline (often rendered as a large h1)
-      const headings = Array.from(document.querySelectorAll("h1, h2, h3"));
-      for (const h of headings) {
-        const t = (h.textContent || "").trim();
-        if (t === "What can I help with today?") {
-          h.textContent = "Waarmee kan ik je vandaag helpen?";
-        }
+      // Also try to patch accessibility label text if that's what renders
+      const labeled =
+        root.querySelector('[aria-label="Message the AI"]') ||
+        root.querySelector('[placeholder="Message the AI"]');
+
+      if (labeled) {
+        labeled.setAttribute("aria-label", "Stel je vraag aan Skillport…");
+        labeled.setAttribute("placeholder", "Stel je vraag aan Skillport…");
       }
     };
-
-    // Run once immediately
     applyDutchUI();
-
-    // Keep re-applying when ChatKit rerenders
     const obs = new MutationObserver(() => applyDutchUI());
-    obs.observe(panel, { subtree: true, childList: true });
+    obs.observe(root, { subtree: true, childList: true });
 
     return () => obs.disconnect();
   }, []);
