@@ -64,14 +64,5 @@ export function ChatKitPanel() {
     return () => obs.disconnect();
   }, []);
 
-  return (
-    <div className="relative flex h-[90vh] w-full rounded-2xl bg-white shadow-sm transition-colors dark:bg-slate-900">
-      {/* DEBUG BADGE - if you see this, you are on the new deployed build */}
-      <div className="absolute left-3 top-3 z-50 rounded bg-black/70 px-2 py-1 text-xs text-white">
-        UI patch v1 active
-      </div>
-
-      <ChatKit control={chatkit.control} className="h-full w-full" />
-    </div>
-  );
+  return;
 }
