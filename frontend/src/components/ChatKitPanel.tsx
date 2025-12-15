@@ -10,16 +10,6 @@ export function ChatKitPanel() {
 
   const chatkit = useChatKit({
     api: { getClientSecret },
-    ui: {
-      startScreen: {
-        title: "Waarmee kan ik je vandaag helpen?",
-        subtitle: "Ik help je graag met vragen over Skillport en Wet DBA.",
-      },
-      composer: {
-        placeholder: "Stel je vraag aan Skillport…",
-        submitLabel: "Versturen",
-      },
-    },
   });
 
   return (
