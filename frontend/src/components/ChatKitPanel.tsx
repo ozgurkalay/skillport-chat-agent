@@ -2,73 +2,66 @@ import { useEffect, useMemo } from "react";
 import { ChatKit, useChatKit } from "@openai/chatkit-react";
 import { createClientSecretFetcher, workflowId } from "../lib/chatkitSession";
 
+const REPLACEMENTS: Array<[string, string]> = [
+  ["What can I help with today?", "Waarmee kan ik je vandaag helpen?"],
+  ["Message the AI", "Stel je vraag aan Skillport…"],
+];
+
+function applyDutchEverywhere(root: Document | ShadowRoot) {
+  // 1) Replace visible text nodes
+  const walker = document.createTreeWalker(root as any, NodeFilter.SHOW_TEXT);
+  let node: Node | null;
+  while ((node = walker.nextNode())) {
+    const v = (node.nodeValue || "").trim();
+    for (const [from, to] of REPLACEMENTS) {
+      if (v === from) node.nodeValue = to;
+    }
+  }
+
+  // 2) Replace placeholders / aria-labels
+  const els =
+    (root as any).querySelectorAll?.(
+      "input, textarea, button, [aria-label], [placeholder]"
+    ) || [];
+  els.forEach((el: any) => {
+    const ph = el.getAttribute?.("placeholder");
+    const al = el.getAttribute?.("aria-label");
+
+    if (ph === "Message the AI")
+      el.setAttribute("placeholder", "Stel je vraag aan Skillport…");
+    if (al === "Message the AI")
+      el.setAttribute("aria-label", "Stel je vraag aan Skillport…");
+  });
+}
+
+function scanAndPatch() {
+  // Patch document
+  applyDutchEverywhere(document);
+
+  // Patch every shadow root we can find
+  const all = Array.from(document.querySelectorAll("*")) as any[];
+  for (const el of all) {
+    if (el.shadowRoot) {
+      applyDutchEverywhere(el.shadowRoot);
+    }
+  }
+}
+
 export function ChatKitPanel() {
   const getClientSecret = useMemo(
     () => createClientSecretFetcher(workflowId),
     []
   );
-
-  const chatkit = useChatKit({
-    api: { getClientSecret },
-  });
+  const chatkit = useChatKit({ api: { getClientSecret } });
 
   useEffect(() => {
-    const root =
-      document.getElementById("skillport-chatkit-root") ?? document.body;
+    // Run immediately
+    scanAndPatch();
 
-    const replaceInContainer = (container: ParentNode) => {
-      // Replace welcome title
-      const headings = Array.from(container.querySelectorAll("h1, h2, h3"));
-      for (const h of headings) {
-        const t = (h.textContent || "").trim();
-        if (t === "What can I help with today?") {
-          h.textContent = "Waarmee kan ik je vandaag helpen?";
-        }
-      }
+    // Re-run repeatedly because ChatKit rerenders
+    const iv = window.setInterval(scanAndPatch, 250);
 
-      // Replace input placeholder
-      const input =
-        container.querySelector("textarea") ||
-        container.querySelector('input[type="text"]');
-
-      if (input) {
-        input.setAttribute("placeholder", "Stel je vraag aan Skillport…");
-        // sometimes ChatKit uses aria-label instead of placeholder
-        if (input.getAttribute("aria-label") === "Message the AI") {
-          input.setAttribute("aria-label", "Stel je vraag aan Skillport…");
-        }
-      }
-
-      // Replace any aria-label usage (send button / composer etc.)
-      const aria = Array.from(container.querySelectorAll("[aria-label]"));
-      for (const el of aria) {
-        const v = el.getAttribute("aria-label");
-        if (v === "Message the AI") {
-          el.setAttribute("aria-label", "Stel je vraag aan Skillport…");
-        }
-      }
-    };
-
-    const applyDutch = () => {
-      // normal DOM
-      replaceInContainer(root);
-
-      // Shadow DOM (important!)
-      const all = Array.from(root.querySelectorAll("*"));
-      for (const el of all) {
-        const anyEl = el as any;
-        if (anyEl && anyEl.shadowRoot) {
-          replaceInContainer(anyEl.shadowRoot as ShadowRoot);
-        }
-      }
-    };
-
-    applyDutch();
-
-    const obs = new MutationObserver(() => applyDutch());
-    obs.observe(root, { subtree: true, childList: true, attributes: true });
-
-    return () => obs.disconnect();
+    return () => window.clearInterval(iv);
   }, []);
 
   return (
