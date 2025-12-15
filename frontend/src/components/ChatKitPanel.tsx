@@ -8,13 +8,12 @@ export function ChatKitPanel() {
     []
   );
 
-  // IMPORTANT: do NOT pass ui/locale/startScreen/composer here (your version rejects them)
   const chatkit = useChatKit({
     api: { getClientSecret },
   });
 
   useEffect(() => {
-    const ROOT_ID = "skillport-chatkit-root";
+    console.log("[Skillport] UI patch mounted");
 
     const replacements: Array<[string, string]> = [
       ["What can I help with today?", "Waarmee kan ik je vandaag helpen?"],
@@ -22,28 +21,17 @@ export function ChatKitPanel() {
     ];
 
     const patchTextNodes = (root: ParentNode) => {
-      // Replace visible text by walking text nodes
-      const walker = document.createTreeWalker(
-        root,
-        NodeFilter.SHOW_TEXT,
-        null
-      );
-
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
       let node: Node | null;
       while ((node = walker.nextNode())) {
-        const value = (node.nodeValue || "").trim();
+        const txt = (node.nodeValue || "").trim();
         for (const [from, to] of replacements) {
-          if (value === from)
-            node.nodeValue = node.nodeValue!.replace(from, to);
+          if (txt === from) node.nodeValue = to;
         }
       }
 
-      // Replace placeholder / aria-label (input can be inside shadow DOM)
-      const inputs = (root as ParentNode).querySelectorAll?.(
-        "textarea, input"
-      ) as NodeListOf<HTMLInputElement | HTMLTextAreaElement> | undefined;
-
-      inputs?.forEach((el) => {
+      const inputs = (root as any).querySelectorAll?.("textarea, input");
+      inputs?.forEach((el: any) => {
         if (el.getAttribute("placeholder") === "Message the AI") {
           el.setAttribute("placeholder", "Stel je vraag aan Skillport…");
         }
@@ -54,29 +42,22 @@ export function ChatKitPanel() {
     };
 
     const patchAll = () => {
-      // 1) Patch normal DOM under our root
-      const container = document.getElementById(ROOT_ID) ?? document.body;
-      patchTextNodes(container);
-
-      // 2) Patch ChatKit shadow DOM (openai-chatkit element)
       const chatkitEl = document.querySelector("openai-chatkit") as any;
+
+      console.log(
+        "[Skillport] openai-chatkit found?",
+        !!chatkitEl,
+        "shadowRoot?",
+        !!chatkitEl?.shadowRoot
+      );
+
       if (chatkitEl?.shadowRoot) {
-        patchTextNodes(chatkitEl.shadowRoot as ShadowRoot);
-
-        // Some apps nest more shadow roots – patch them too
-        const shadowHosts = Array.from(
-          chatkitEl.shadowRoot.querySelectorAll("*")
-        ).filter((el: any) => el && (el as any).shadowRoot) as any[];
-
-        for (const host of shadowHosts) {
-          patchTextNodes(host.shadowRoot as ShadowRoot);
-        }
+        patchTextNodes(chatkitEl.shadowRoot);
       }
     };
 
     patchAll();
 
-    // Re-apply on rerenders
     const obs = new MutationObserver(() => patchAll());
     obs.observe(document.documentElement, { childList: true, subtree: true });
 
@@ -84,10 +65,12 @@ export function ChatKitPanel() {
   }, []);
 
   return (
-    <div
-      id="skillport-chatkit-root"
-      className="flex h-[90vh] w-full rounded-2xl bg-white shadow-sm transition-colors dark:bg-slate-900"
-    >
+    <div className="relative flex h-[90vh] w-full rounded-2xl bg-white shadow-sm transition-colors dark:bg-slate-900">
+      {/* DEBUG BADGE - if you see this, you are on the new deployed build */}
+      <div className="absolute left-3 top-3 z-50 rounded bg-black/70 px-2 py-1 text-xs text-white">
+        UI patch v1 active
+      </div>
+
       <ChatKit control={chatkit.control} className="h-full w-full" />
     </div>
   );
