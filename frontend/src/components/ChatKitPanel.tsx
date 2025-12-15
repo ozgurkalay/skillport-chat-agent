@@ -11,9 +11,11 @@ export function ChatKitPanel() {
     []
   );
 
-  // IMPORTANT: do NOT pass ui/locale/startScreen/composer here (your version rejects them)
   const chatkit = useChatKit({
     api: { getClientSecret },
+    startScreen: {
+      greeting: STARTER_MESSAGE,
+    },
   });
 
   useEffect(() => {
