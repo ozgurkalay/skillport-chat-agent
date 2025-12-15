@@ -2,6 +2,9 @@ import { useEffect, useMemo } from "react";
 import { ChatKit, useChatKit } from "@openai/chatkit-react";
 import { createClientSecretFetcher, workflowId } from "../lib/chatkitSession";
 
+const STARTER_MESSAGE =
+  "Hallo! Ik ben Skillport, je digitale assistent. Laat me weten waarmee ik je kan helpen.";
+
 export function ChatKitPanel() {
   const getClientSecret = useMemo(
     () => createClientSecretFetcher(workflowId),
@@ -17,7 +20,7 @@ export function ChatKitPanel() {
     const ROOT_ID = "skillport-chatkit-root";
 
     const replacements: Array<[string, string]> = [
-      ["What can I help with today?", "Waarmee kan ik je vandaag helpen?"],
+      ["What can I help with today?", STARTER_MESSAGE],
       ["Message the AI", "Stel je vraag aan Skillport…"],
     ];
 
