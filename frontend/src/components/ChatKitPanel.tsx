@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { ChatKit, useChatKit } from "@openai/chatkit-react";
 import { createClientSecretFetcher, workflowId } from "../lib/chatkitSession";
 
@@ -8,43 +8,80 @@ export function ChatKitPanel() {
     []
   );
 
+  // IMPORTANT: do NOT pass ui/locale/startScreen/composer here (your version rejects them)
   const chatkit = useChatKit({
     api: { getClientSecret },
-
-    // ✅ UI language + strings
-    ui: {
-      locale: "nl-NL",
-      composer: {
-        placeholder: "Stel je vraag aan Skillport…",
-      },
-      startScreen: {
-        // Some versions use "title", others use "greeting".
-        // We include BOTH to maximize compatibility.
-        title: "Waarmee kan ik je vandaag helpen?",
-        greeting: "Waarmee kan ik je vandaag helpen?",
-
-        // Starter prompts
-        prompts: [
-          {
-            name: "Wet DBA uitgelegd",
-            prompt:
-              "Kun je in eenvoudige taal uitleggen wat de Wet DBA betekent?",
-            icon: "info",
-          },
-          {
-            name: "Modelovereenkomst",
-            prompt: "Hoe helpt Skillport mij met een modelovereenkomst?",
-            icon: "write",
-          },
-          {
-            name: "Risico-check",
-            prompt: "Welke risico’s checkt Skillport in een dossier?",
-            icon: "search",
-          },
-        ],
-      },
-    },
   });
+
+  useEffect(() => {
+    const ROOT_ID = "skillport-chatkit-root";
+
+    const replacements: Array<[string, string]> = [
+      ["What can I help with today?", "Waarmee kan ik je vandaag helpen?"],
+      ["Message the AI", "Stel je vraag aan Skillport…"],
+    ];
+
+    const patchTextNodes = (root: ParentNode) => {
+      // Replace visible text by walking text nodes
+      const walker = document.createTreeWalker(
+        root,
+        NodeFilter.SHOW_TEXT,
+        null
+      );
+
+      let node: Node | null;
+      while ((node = walker.nextNode())) {
+        const value = (node.nodeValue || "").trim();
+        for (const [from, to] of replacements) {
+          if (value === from)
+            node.nodeValue = node.nodeValue!.replace(from, to);
+        }
+      }
+
+      // Replace placeholder / aria-label (input can be inside shadow DOM)
+      const inputs = (root as ParentNode).querySelectorAll?.(
+        "textarea, input"
+      ) as NodeListOf<HTMLInputElement | HTMLTextAreaElement> | undefined;
+
+      inputs?.forEach((el) => {
+        if (el.getAttribute("placeholder") === "Message the AI") {
+          el.setAttribute("placeholder", "Stel je vraag aan Skillport…");
+        }
+        if (el.getAttribute("aria-label") === "Message the AI") {
+          el.setAttribute("aria-label", "Stel je vraag aan Skillport…");
+        }
+      });
+    };
+
+    const patchAll = () => {
+      // 1) Patch normal DOM under our root
+      const container = document.getElementById(ROOT_ID) ?? document.body;
+      patchTextNodes(container);
+
+      // 2) Patch ChatKit shadow DOM (openai-chatkit element)
+      const chatkitEl = document.querySelector("openai-chatkit") as any;
+      if (chatkitEl?.shadowRoot) {
+        patchTextNodes(chatkitEl.shadowRoot as ShadowRoot);
+
+        // Some apps nest more shadow roots – patch them too
+        const shadowHosts = Array.from(
+          chatkitEl.shadowRoot.querySelectorAll("*")
+        ).filter((el: any) => el && (el as any).shadowRoot) as any[];
+
+        for (const host of shadowHosts) {
+          patchTextNodes(host.shadowRoot as ShadowRoot);
+        }
+      }
+    };
+
+    patchAll();
+
+    // Re-apply on rerenders
+    const obs = new MutationObserver(() => patchAll());
+    obs.observe(document.documentElement, { childList: true, subtree: true });
+
+    return () => obs.disconnect();
+  }, []);
 
   return (
     <div
