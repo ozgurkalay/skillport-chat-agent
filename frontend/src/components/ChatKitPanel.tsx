@@ -4,6 +4,7 @@ import { createClientSecretFetcher, workflowId } from "../lib/chatkitSession";
 
 const STARTER_MESSAGE =
   "Hallo! Ik ben Skillport, je digitale assistent. Laat me weten waarmee ik je kan helpen.";
+const PLACEHOLDER_MESSAGE = "Stel je vraag aan Skillport…";
 
 export function ChatKitPanel() {
   const getClientSecret = useMemo(
@@ -16,6 +17,9 @@ export function ChatKitPanel() {
     startScreen: {
       greeting: STARTER_MESSAGE,
     },
+    composer: {
+      placeholder: PLACEHOLDER_MESSAGE,
+    },
   });
 
   useEffect(() => {
@@ -23,7 +27,7 @@ export function ChatKitPanel() {
 
     const replacements: Array<[string, string]> = [
       ["What can I help with today?", STARTER_MESSAGE],
-      ["Message the AI", "Stel je vraag aan Skillport…"],
+      ["Message the AI", PLACEHOLDER_MESSAGE],
     ];
 
     const patchTextNodes = (root: ParentNode) => {
@@ -50,10 +54,10 @@ export function ChatKitPanel() {
 
       inputs?.forEach((el) => {
         if (el.getAttribute("placeholder") === "Message the AI") {
-          el.setAttribute("placeholder", "Stel je vraag aan Skillport…");
+          el.setAttribute("placeholder", PLACEHOLDER_MESSAGE);
         }
         if (el.getAttribute("aria-label") === "Message the AI") {
-          el.setAttribute("aria-label", "Stel je vraag aan Skillport…");
+          el.setAttribute("aria-label", PLACEHOLDER_MESSAGE);
         }
       });
     };
