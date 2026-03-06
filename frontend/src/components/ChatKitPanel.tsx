@@ -6,14 +6,14 @@ const STARTER_MESSAGE = "Hallo! Ik ben Skillport, je digitale assistent. Laat me
 const PLACEHOLDER_MESSAGE = "Stel je vraag aan Skillport…";
 
 export function ChatKitPanel() {
+  // Use a simpler approach to get the userId
   const getClientSecret = useMemo(() => {
-    // 1. Get the userId from the URL query parameters (?userId=...)
-    // This comes from the main website's iframe src
-    const params = new URLSearchParams(window.location.search);
-    const userId = params.get('userId') || 'anonymous-' + Math.random().toString(36).substr(2, 9);
-    
-    // 2. Create the fetcher using this unique user identity
-    return createClientSecretFetcher(workflowId, userId);
+    let uid = 'anonymous';
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      uid = params.get('userId') || 'anonymous-' + Math.random().toString(36).substring(7);
+    }
+    return createClientSecretFetcher(workflowId, uid);
   }, []);
 
   const chatkit = useChatKit({
@@ -26,11 +26,15 @@ export function ChatKitPanel() {
     },
   });
 
-  // ... (the rest of the useEffect for translations remains exactly the same)
+  // Keep your existing translation useEffect here...
   useEffect(() => {
-    // (Existing MutationObserver logic here...)
-    // [Keep your existing code for translations and placeholders]
+    // [Your existing code for MutationObserver / patchAll]
   }, []);
+
+  // Check if chatkit.control is ready
+  if (!chatkit.control) {
+    return <div className="p-8 text-center">Inladen...</div>;
+  }
 
   return (
     <div
