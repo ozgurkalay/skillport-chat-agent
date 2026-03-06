@@ -1,4 +1,3 @@
-// frontend/api/create-session.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -7,9 +6,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
+  // Extract workflowId and the new userId from the request body
+  const { workflowId: bodyWorkflowId, userId } = req.body;
+
   const apiKey = process.env.OPENAI_API_KEY;
-  const workflowId = process.env.CHATKIT_WORKFLOW_ID; // we’ll set this in Vercel
-  const projectId = process.env.OPENAI_PROJECT_ID;    // optional, only if you use Projects
+  // Use the workflowId from the request if provided, otherwise fallback to Env var
+  const workflowId = bodyWorkflowId || process.env.CHATKIT_WORKFLOW_ID;
+  const projectId = process.env.OPENAI_PROJECT_ID;
 
   if (!apiKey || !workflowId) {
     res.status(500).json({ error: 'Server is missing OPENAI_API_KEY or CHATKIT_WORKFLOW_ID' });
@@ -27,14 +30,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
       body: JSON.stringify({
         workflow: { id: workflowId },
-        user: 'skillport-web', // you can later pass a real user/device id here
+        // Use the userId passed from the frontend, fallback to a default if missing
+        user: userId || 'skillport-web-anonymous',
       }),
     });
 
     const bodyText = await response.text();
 
     if (!response.ok) {
-      // Pass through the OpenAI error for debugging
       res.status(response.status).json({ error: bodyText });
       return;
     }
@@ -46,7 +49,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    // This is exactly what your frontend expects
     res.status(200).json({ client_secret: data.client_secret });
   } catch (err: any) {
     console.error('Error creating ChatKit session:', err);
