@@ -1,32 +1,21 @@
-// TEMP: hardcode workflow ID for local testing.
-export const workflowId = "wf_6937f82a3d7c81908bb6b243008764d80371a39157cea96e"; // <-- put your real ID here
+export const workflowId = "clzi08q75003cstc480y349on";
 
-export function createClientSecretFetcher(
-  workflow: string,
-  endpoint = "/api/create-session"
-) {
-  return async (currentSecret: string | null) => {
-    if (currentSecret) return currentSecret;
-
-    const response = await fetch(endpoint, {
+export function createClientSecretFetcher(workflowId: string, userId: string) {
+  return async () => {
+    // Now sending both workflowId AND userId to your backend API
+    const response = await fetch("/api/create-session", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workflow: { id: workflow } }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ workflowId, userId }),
     });
 
-    const payload = (await response.json().catch(() => ({}))) as {
-      client_secret?: string;
-      error?: string;
-    };
-
     if (!response.ok) {
-      throw new Error(payload.error ?? "Failed to create session");
+      throw new Error("Failed to create session");
     }
 
-    if (!payload.client_secret) {
-      throw new Error("Missing client secret in response");
-    }
-
-    return payload.client_secret;
+    const { client_secret } = await response.json();
+    return client_secret;
   };
 }
